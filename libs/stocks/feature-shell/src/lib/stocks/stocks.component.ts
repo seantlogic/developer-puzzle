@@ -1,16 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PriceQueryFacade } from '@coding-challenge/stocks/data-access-price-query';
+import { debounceTime, delay, map, switchMap, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'coding-challenge-stocks',
   templateUrl: './stocks.component.html',
   styleUrls: ['./stocks.component.css']
 })
-export class StocksComponent implements OnInit {
+export class StocksComponent implements OnInit, OnDestroy {
   stockPickerForm: FormGroup;
   symbol: string;
   period: string;
+
+  destroySubject$: Subject<void> = new Subject();
 
   quotes$ = this.priceQuery.priceQueries$;
 
@@ -30,6 +34,7 @@ export class StocksComponent implements OnInit {
       symbol: [null, Validators.required],
       period: [null, Validators.required]
     });
+    this.onChanges();
   }
 
   ngOnInit() {}
@@ -39,5 +44,18 @@ export class StocksComponent implements OnInit {
       const { symbol, period } = this.stockPickerForm.value;
       this.priceQuery.fetchQuote(symbol, period);
     }
+  }
+
+  onChanges(): void {
+    this.stockPickerForm.valueChanges
+      .pipe(
+        debounceTime(300),
+        takeUntil(this.destroySubject$)
+      )
+      .subscribe(()=> this.fetchQuote());
+  }
+
+  ngOnDestroy() {
+    this.destroySubject$.next();
   }
 }
