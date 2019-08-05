@@ -1,16 +1,20 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
 import { PriceQueryFacade } from '@coding-challenge/stocks/data-access-price-query';
+import { string } from 'joi';
+import { takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'coding-challenge-stocks',
   templateUrl: './stocks.component.html',
   styleUrls: ['./stocks.component.css']
 })
-export class StocksComponent implements OnInit {
+export class StocksComponent implements OnInit, OnDestroy {
   stockPickerForm: FormGroup;
   symbol: string;
   period: string;
+  destroySubject$: Subject<void> = new Subject();
 
   quotes$ = this.priceQuery.priceQueries$;
 
@@ -28,16 +32,45 @@ export class StocksComponent implements OnInit {
   constructor(private fb: FormBuilder, private priceQuery: PriceQueryFacade) {
     this.stockPickerForm = fb.group({
       symbol: [null, Validators.required],
-      period: [null, Validators.required]
+      period: [null, Validators.required],
+      dateFrom: [null, []],
+      dateTo: [null, []]
+    }, {validator: this.dateValidator('dateFrom', 'dateTo')});
+    this.onChanges();
+  }
+
+  dateValidator(from, to) {
+    return (form: FormGroup): { [key: string]: any } => {
+      const dateFrom = form.controls[from];
+      const dateTo = form.controls[to];
+      return dateFrom.value > dateTo.value ? { 'invalidInputDate': true} : {};
+    }
+  }
+  onChanges(){
+    this.stockPickerForm.valueChanges.pipe(takeUntil(this.destroySubject$)).subscribe(form => {
+      if (form.dateFrom > form.dateTo && form.dateTo && form.dateFrom) {
+        this.stockPickerForm.setValue({
+          ...form,
+          dateTo: form.dateFrom,
+          });
+      }
     });
   }
+
+
 
   ngOnInit() {}
 
   fetchQuote() {
     if (this.stockPickerForm.valid) {
-      const { symbol, period } = this.stockPickerForm.value;
-      this.priceQuery.fetchQuote(symbol, period);
+      let { period } = this.stockPickerForm.value;
+      const { symbol, dateTo, dateFrom} = this.stockPickerForm.value;
+      period = dateTo && dateFrom ? 'max' : period;
+      this.priceQuery.fetchQuote(symbol, period, dateFrom, dateTo);
     }
+  }
+
+  ngOnDestroy() {
+    this.destroySubject$.next();
   }
 }

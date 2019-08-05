@@ -29,6 +29,26 @@
     </mat-select>
   </mat-form-field>
 
+  <div class="grid-container">
+    <div class="grid-item">
+      <mat-form-field>
+        <input matInput [max]="dateTo" [matDatepicker]="dateFrom" formControlName="dateFrom" placeholder="Choose a from date">
+        <mat-datepicker-toggle matSuffix [for]="dateFrom"></mat-datepicker-toggle>
+        <mat-datepicker #dateFrom></mat-datepicker>
+      </mat-form-field>
+    </div>
+    <div class="grid-item">
+      <mat-form-field>
+        <input matInput [min]="dateFrom" [matDatepicker]="dateTo" formControlName="dateTo" placeholder="Choose a to date">
+        <mat-datepicker-toggle matSuffix [for]="dateTo"></mat-datepicker-toggle>
+        <mat-datepicker #dateTo></mat-datepicker>
+      </mat-form-field>
+    </div>
+  </div>
+
+
+
+
   <button (click)="fetchQuote()" mat-raised-button>Go</button>
 </form>
 
